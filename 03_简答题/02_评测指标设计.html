@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>简答题 2｜评测指标设计</title>
+<style>
+:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:#233044;font:16px/1.75 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}main{max-width:1000px;margin:32px auto;padding:36px;background:white;border:1px solid #dce4ee;border-radius:12px}header{border-bottom:2px solid #1e4d78;margin-bottom:22px}h1{font-size:27px;line-height:1.4;color:#163c61;margin:8px 0 18px}.tag{font-size:13px;color:#60758c}h2{font-size:18px;color:#163c61;margin:22px 0 8px}p{margin:9px 0}.question{color:#53647a;font-size:14px}.answer{padding:13px 16px;background:#edf4fb;border-left:4px solid #2d6799;border-radius:4px}ol{padding-left:24px}li{margin:14px 0}table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}th,td{padding:10px 12px;border:1px solid #dce4ee;text-align:left;vertical-align:top}th{background:#edf3f9;color:#163c61}.note{font-size:14px;color:#52647a}code{font-family:ui-monospace,monospace}@media(max-width:640px){main{margin:0;padding:22px 16px;border:0;border-radius:0}h1{font-size:23px}table{font-size:13px}th,td{padding:8px}}@media print{@page{size:A4;margin:14mm}body{background:white;font-size:11pt}main{max-width:none;margin:0;padding:0;border:0}h1{font-size:20pt}tr,.answer{break-inside:avoid}}
+</style>
+</head>
+<body><main>
+<header><div class="tag">简答题 2</div><h1>评测指标设计</h1></header>
+<p class="question">题目：为带人设、在不同角色指令下执行任务的 Agent 设计指标，同时衡量身份保持、角色指令执行及两者的平衡，给出计算方式与预期阈值。</p>
+<p class="answer">我会分别衡量身份保持和角色任务执行，再用“身份保持且任务完成”的联合成功率约束两者的平衡，避免只用两个分数的加权平均掩盖问题。</p>
+<h2>1. 先定义身份边界与样本</h2>
+<p>明确不可随任务改变的基础身份、可切换的角色风格和指令优先级；合法的角色切换不算丢身份。用多个角色、任务和至少 6 轮的对话，覆盖正常交互、角色切换、工具回填与诱导改身份。联合成功只评估身份约束与任务要求可同时满足的样本。</p>
+<h2>2. 指标与计算</h2>
+<p>设有效任务对话数为 <code>N</code>；对话 <code>i</code> 全程身份检查均通过时 <code>Iᵢ=1</code>，任务完成且角色指令检查均通过时 <code>Rᵢ=1</code>，否则为 0。</p>
+<table><thead><tr><th>指标</th><th>计算方式</th><th>建议验收值</th></tr></thead><tbody>
+<tr><td>身份识别率</td><td>正确回答身份探针的次数 ÷ 预先安排的身份探针总次数。正确标准由身份设定决定，不要求机械重复固定措辞。</td><td>≥ 98%</td></tr>
+<tr><td>多轮身份保持率</td><td><code>ΣIᵢ / N</code>。一次对话中任一轮出现与身份矛盾的声明即失败，检查全部轮次。</td><td>≥ 95%</td></tr>
+<tr><td>角色任务成功率</td><td><code>ΣRᵢ / N</code>。同时核对任务最终结果及该角色要求的语气、格式、行为边界等；只像角色但没完成任务不算成功。</td><td>≥ 90%</td></tr>
+<tr><td>联合成功率</td><td><code>Σ(Iᵢ × Rᵢ) / N</code>。仅同一次对话中身份与角色任务都通过才计 1，防止靠只报身份或只做任务刷高单项。</td><td>≥ 85%，且两个单项均过门槛</td></tr>
+<tr><td>角色引入的身份降幅</td><td>在相同任务上配对比较：“无附加角色时的身份保持率 − 加入角色后的身份保持率”，以百分点计。</td><td>≤ 2 个百分点</td></tr>
+</tbody></table>
+<p class="note">以上是示例验收门槛，不是行业统一标准。应先用底座和人工标注样本校准，再在发布前冻结；小样本需报告置信区间，不能只看点估计。</p>
+<h2>3. 判定与分母必须固定</h2>
+<p>身份事实、格式、工具状态优先用规则或执行结果判定；语义与风格使用固定评分细则、冻结版本的判官，并对抽样结果进行人工盲审校准。模型漏答、答非所问和角色任务失败计 0；基础设施故障单列无效轮并按固定策略重跑，避免新旧版本使用不同样本集合。</p>
+<h2>4. 分项报告与最终门禁</h2>
+<p>按角色、任务类型和轮次分别报告上述指标、有效样本数及无效率，兼看角色等权平均与最差分组；任何关键身份门槛不通过即不放行，不能让任务分的提升抵消身份退化。</p>
+</main></body></html>

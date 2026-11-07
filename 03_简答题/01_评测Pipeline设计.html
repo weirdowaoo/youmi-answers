@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>简答题 1｜评测 Pipeline 设计</title>
+<style>
+:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:#233044;font:16px/1.75 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}main{max-width:1000px;margin:32px auto;padding:36px;background:white;border:1px solid #dce4ee;border-radius:12px}header{border-bottom:2px solid #1e4d78;margin-bottom:22px}h1{font-size:27px;line-height:1.4;color:#163c61;margin:8px 0 18px}.tag{font-size:13px;color:#60758c}h2{font-size:18px;color:#163c61;margin:22px 0 8px}p{margin:9px 0}.question{color:#53647a;font-size:14px}.answer,.flow{padding:13px 16px;background:#edf4fb;border-left:4px solid #2d6799;border-radius:4px}.flow{text-align:center;font-weight:600}ol{padding-left:24px}li{margin:14px 0}table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}th,td{padding:10px 12px;border:1px solid #dce4ee;text-align:left;vertical-align:top}th{background:#edf3f9;color:#163c61}.note{font-size:14px;color:#52647a}code{font-family:ui-monospace,monospace}@media(max-width:640px){main{margin:0;padding:22px 16px;border:0;border-radius:0}h1{font-size:23px}table{font-size:13px}th,td{padding:8px}}@media print{@page{size:A4;margin:14mm}body{background:white;font-size:11pt}main{max-width:none;margin:0;padding:0;border:0}h1{font-size:20pt}li,tr,.answer,.flow{break-inside:avoid}}
+</style>
+</head>
+<body><main>
+<header><div class="tag">简答题 1</div><h1>评测 Pipeline 设计</h1></header>
+<p class="question">题目：设计覆盖通用能力（MMLU、C-Eval、HumanEval、GSM8K）和 Agent 能力（函数调用、多轮编排）的自动化评测流水线，说明架构、数据流、关键模块与可复现措施。</p>
+<p class="answer">我会共用任务调度、模型接口和结果存储，并按 benchmark 配置数据适配、交互环境与独立评分器，保留逐题证据后再聚合。</p>
+<div class="flow">版本化任务配置 → 数据与提示词 → 模型／Agent 执行 → 逐题评分 → 分类聚合 → 版本对比与告警</div>
+<ol>
+<li><strong>任务与数据管理。</strong>为每次运行生成唯一编号，固定模型、数据集版本与划分、题目 ID、提示词、few-shot 样例及评分器版本；训练示例与测试集分离，避免答案泄漏。</li>
+<li><strong>执行层分两条链路。</strong>通用题通过统一模型接口批量推理，支持 vLLM／SGLang 或远程 API；Agent 题运行“模型决策 → 工具执行 → 结果回填”的循环，保存完整轨迹并限制步数、时间和 token。代码与工具执行使用隔离环境，每题重置状态。</li>
+<li><strong>按基准原定协议评分。</strong>固定具体版本，不混用不同版本的任务或聚合方法。
+<table><thead><tr><th>基准／能力</th><th>主要评分方式</th></tr></thead><tbody>
+<tr><td>MMLU、C-Eval</td><td>按所选协议比较选项得分或提取选项，计算准确率，并报告学科分项与官方聚合结果。</td></tr>
+<tr><td>GSM8K</td><td>提取并规范化最终数值答案，与参考答案比较，计算准确率。</td></tr>
+<tr><td>HumanEval</td><td>运行测试判断功能正确性，报告 pass@1；多次采样时，在样本数满足要求的情况下按官方估计器计算 pass@k。</td></tr>
+<tr><td>函数调用与多轮 Agent</td><td>BFCL 按类别检查函数、参数、可执行结果或多轮状态与调用路径；多轮任务核对目标状态、必要约束与任务成功率。步数、时延、成本作为辅助指标。</td></tr>
+</tbody></table></li>
+<li><strong>结果与失败分开记录。</strong>存储原始输出、调用轨迹、逐题得分、失败原因和运行配置，再按类别与版本聚合。模型答错或违反约定预算记失败；服务故障、评分器崩溃等无效轮单列并按固定策略重跑，不能悄悄丢弃或混成能力零分。</li>
+<li><strong>控制复现条件。</strong>固定采样参数、随机种子、样本顺序、few-shot 抽样与工具初始状态；锁定代码提交、依赖、容器、硬件和数值精度，并区分不同模型版本的缓存。温度为 0 也不保证跨硬件完全一致，应保留输出快照并通过重复运行量化波动。</li>
+<li><strong>回归与发布门禁。</strong>同一批题配对比较新旧版本，报告样本数、分项得分、差值及置信区间；结合失败案例复核设置退化门槛。先用明确的通过／失败样例验证评分器，再把每次模型变更接入自动回归。</li>
+</ol>
+</main>
+</body></html>

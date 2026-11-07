@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>简答题 3｜评测结果分析与决策</title>
+<style>
+:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:#233044;font:16px/1.75 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}main{max-width:1000px;margin:32px auto;padding:36px;background:white;border:1px solid #dce4ee;border-radius:12px}header{border-bottom:2px solid #1e4d78;margin-bottom:22px}h1{font-size:27px;line-height:1.4;color:#163c61;margin:8px 0 18px}.tag{font-size:13px;color:#60758c}.question{color:#53647a;font-size:14px}p{margin:9px 0}.answer{padding:13px 16px;background:#fff3ed;border-left:4px solid #bc5528;border-radius:4px}ol{padding-left:24px}li{margin:14px 0}table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}th,td{padding:10px 12px;border:1px solid #dce4ee;text-align:left;vertical-align:top}th{background:#edf3f9;color:#163c61}.note{font-size:14px;color:#52647a}code{font-family:ui-monospace,monospace}@media(max-width:640px){main{margin:0;padding:22px 16px;border:0;border-radius:0}h1{font-size:23px}table{font-size:13px}th,td{padding:8px}}@media print{@page{size:A4;margin:14mm}body{background:white;font-size:11pt}main{max-width:none;margin:0;padding:0;border:0}h1{font-size:20pt}li,tr,.answer{break-inside:avoid}}
+</style>
+</head>
+<body><main>
+<header><div class="tag">简答题 3</div><h1>评测结果分析与决策</h1></header>
+<p class="question">题目：训练后 MMLU／GSM8K 与底座持平，BFCL 提升 8%，但人设识别率从 98% 降到 82%。分析可能原因，并给出排查步骤和修复建议。</p>
+<p class="answer"><strong>我的判断：</strong>工具指标改善与身份识别退化并存；身份识别下降 <strong>16 个百分点</strong>，应暂停以人设能力为要求的版本放量。仅凭这三组分数，不能断定是灾难性遗忘，也不能宣布模型整体提升。</p>
+<ol>
+<li><strong>先核对比较口径。</strong>确认新旧模型的数据版本、题目集合、提示词、身份设定、采样参数、上下文窗口、工具 schema 和评分器一致；检查缓存、输出解析、截断及接口错误。BFCL 的“提升 8%”须确认是相对提升还是增加 8 个百分点，不能自行换算。</li>
+<li><strong>复跑并定位退化样本。</strong>用相同样本配对重跑，核对有效样本数与无效轮，按角色、单轮／长对话、有无工具调用拆分。人工盲审“底座对、新模型错”的身份回答，区分真实身份混淆与评分规则误判，并用置信区间判断差异是否超出波动。</li>
+<li><strong>用对照实验区分原因。</strong>以下均为待验证假设，不能直接当成结论。
+<table><thead><tr><th>可能原因</th><th>验证方式</th></tr></thead><tbody>
+<tr><td>工具训练数据占比过高，稀释人设能力；训练样本身份标签矛盾。</td><td>审计数据配比与身份文本，比较训练前后中间 checkpoint；小规模改变数据配比做消融。</td></tr>
+<tr><td>学习率或更新强度过大，造成部分能力遗忘。</td><td>比较较小学习率、较少训练步数或不同 checkpoint 的身份与 BFCL 联合曲线。</td></tr>
+<tr><td>推理模板、指令优先级或长上下文处理改变。</td><td>固定权重，仅更换模板、工具开关及对话长度；检查身份约束是否被覆盖或截断。</td></tr>
+</tbody></table></li>
+<li><strong>按证据修复。</strong>配置或解析有误先修评测；若确认训练退化，清理冲突样本，补充身份保持、角色切换及“工具完成任务仍保持身份”的多轮样本，调整混合比例与学习率。必要时用底座输出蒸馏或约束训练，选择同时满足两类能力门槛的 checkpoint。</li>
+<li><strong>做联合回归。</strong>在未用于修复的留出集上重测 MMLU、GSM8K、BFCL、身份识别、多轮身份保持和“身份＋任务”联合成功率。通用能力持平仅说明这两项基准未见明显变化，不能替代人设及各分组检查。</li>
+<li><strong>按预设门槛决策。</strong>身份能力恢复到既定验收门槛、BFCL 收益仍保留且关键分组无显著退化，才小流量灰度并监控。若无法兼顾，回退或继续训练；不能仅因 BFCL 变好就覆盖人设退化。</li>
+</ol>
+</main></body></html>
